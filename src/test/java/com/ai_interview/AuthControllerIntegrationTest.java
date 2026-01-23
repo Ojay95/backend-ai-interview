@@ -1,36 +1,38 @@
 package com.ai_interview;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ai_interview.domain.auth.dto.LoginRequest;
 import com.ai_interview.domain.auth.dto.RegisterRequest;
 import com.ai_interview.domain.auth.repository.UserRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration;
-import org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.ResultMatcher;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest(properties = {
-        "spring.data.redis.repositories.enabled=false" // Explicitly disable Redis repos
+        // 1. Explicitly Disable Redis
+        "spring.data.redis.repositories.enabled=false",
+        "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration",
+
+        // 2. Mock Security Keys
+        "app.jwt.secret=5367566B59703373367639792F423F4528482B4D6251655468576D5A71347437",
+        "app.jwt.expiration-ms=3600000",
+
+        // 3. Mock Email & AI
+        "spring.mail.host=localhost",
+        "spring.ai.google.genai.api-key=test-key"
 })
 @AutoConfigureMockMvc
-@ActiveProfiles("test")
-// ⬇️ CRITICAL: This tells Spring "Don't try to load Redis"
-@org.springframework.boot.autoconfigure.EnableAutoConfiguration(exclude = {
-        RedisAutoConfiguration.class,
-        RedisRepositoriesAutoConfiguration.class
-})
-class AuthControllerIntegrationTest {
+// ⬇️ THIS IS THE FIX: It forces an H2 In-Memory DB, ignoring your application.properties URL
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.ANY)
+public class AuthControllerIntegrationTest {
 
     @Autowired private MockMvc mockMvc;
     @Autowired private UserRepository userRepository;
@@ -38,7 +40,7 @@ class AuthControllerIntegrationTest {
 
     @BeforeEach
     void tearDown() {
-        userRepository.deleteAll();
+        userRepository.deleteAll(); // Clean DB before each test
     }
 
     @Test
@@ -49,8 +51,8 @@ class AuthControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
-                .andExpect((ResultMatcher) jsonPath("$.token").exists())
-                .andExpect((ResultMatcher) jsonPath("$.user.email").value("alice@test.com"));
+                .andExpect(jsonPath("$.token").exists())
+                .andExpect(jsonPath("$.user.email").value("alice@test.com"));
     }
 
     @Test
@@ -85,6 +87,6 @@ class AuthControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(login)))
                 .andExpect(status().isOk())
-                .andExpect((ResultMatcher) jsonPath("$.token").exists());
+                .andExpect(jsonPath("$.token").exists());
     }
 }
