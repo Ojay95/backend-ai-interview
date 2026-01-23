@@ -38,10 +38,14 @@ Content-Type: application/json
 
 ###
 
-### 3. Test a Protected Endpoint (Requires Token)
-# This uses the token captured from the requests above automatically!
-# (Note: We haven't built a protected GET endpoint yet, so this might 404,
-# but it tests if the Security Filter accepts the token).
-GET http://localhost:8080/api/v1/demo
+### 3. Get My Profile (Protected Endpoint)
+GET http://localhost:8080/api/v1/users/profile
 Authorization: Bearer {{auth_token}}
 Accept: application/json
+
+> {%
+    client.test("Request executed successfully", function() {
+        client.assert(response.status === 200, "Response status is not 200");
+        client.assert(response.body.email === "john.wick@continental.com", "Email does not match!");
+    });
+%}
