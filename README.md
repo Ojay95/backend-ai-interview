@@ -1,7 +1,3 @@
-Here is a specialized **README.md** focused exclusively on the **Backend** architecture and setup. You should place this file inside your `Backend/` folder.
-
----
-
 # 🧠 MockInterview.ai - Backend API
 
 The robust, scalable **Spring Boot** application that powers the MockInterview.ai platform. It handles real-time AI integration, secure authentication, document processing, and interview session management using **Domain-Driven Design (DDD)**.
