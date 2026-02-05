@@ -3,6 +3,7 @@ package com.ai_interview.domain.interview.service;
 import com.ai_interview.common.exception.InterviewException;
 import com.ai_interview.domain.auth.entity.User;
 import com.ai_interview.domain.auth.repository.UserRepository;
+import com.ai_interview.domain.interview.dto.InterviewHistoryDto;
 import com.ai_interview.domain.interview.dto.InterviewRequest;
 import com.ai_interview.domain.interview.dto.TranscriptDto;
 import com.ai_interview.domain.interview.entity.InterviewSession;
@@ -144,5 +145,14 @@ public class InterviewService {
     }
 
 
+    @Transactional(readOnly = true)
+    public List<InterviewHistoryDto> getUserInterviewHistory(String userEmail) {
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> InterviewException.notFound("User not found"));
 
+        return sessionRepository.findByUserIdOrderByStartedAtDesc(user.getId())
+                .stream()
+                .map(InterviewHistoryDto::from)
+                .collect(Collectors.toList());
+    }
 }
