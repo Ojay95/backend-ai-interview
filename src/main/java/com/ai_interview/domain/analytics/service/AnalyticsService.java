@@ -7,13 +7,14 @@ import com.ai_interview.domain.auth.repository.UserRepository;
 import com.ai_interview.domain.interview.entity.InterviewSession;
 import com.ai_interview.domain.interview.repository.InterviewSessionRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -27,58 +28,63 @@ public class AnalyticsService {
     public DashboardStatsResponse getDashboardStats(String userEmail) {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> InterviewException.notFound("User not found"));
+        UUID userId = user.getId();
 
-        List<InterviewSession> sessions = sessionRepository.findByUserIdOrderByStartedAtDesc(user.getId());
+        // 1. DB-Optimized Stats (O(1) memory usage)
+        Integer totalCount = sessionRepository.countSessionsByUserId(userId);
+        Double avgScore = sessionRepository.findAverageScoreByUserId(userId);
 
-        // 1. Basic Stats
-        int totalCount = sessions.size();
-        double avgScore = sessions.stream()
-                .mapToDouble(s -> s.getOverallScore() != null ? s.getOverallScore() : 0.0)
-                .average()
-                .orElse(0.0);
+        if (totalCount == 0 || avgScore == null) {
+            return buildEmptyStats();
+        }
 
-        // 2. Performance Trend (Last 6 sessions for the graph)
-        List<DashboardStatsResponse.PerformancePoint> trend = sessions.stream()
-                .sorted(Comparator.comparing(InterviewSession::getStartedAt)) // Sort oldest to newest for graph
-                .limit(10) // Limit to last 10 points
+        // 2. Fetch only last 10 sessions for the graph (Not all 1000!)
+        List<InterviewSession> recentSessions = sessionRepository.findRecentSessions(userId, PageRequest.of(0, 10));
+
+        // Reverse them for the graph (Oldest -> Newest)
+        List<DashboardStatsResponse.PerformancePoint> trend = recentSessions.stream()
+                .sorted(Comparator.comparing(InterviewSession::getStartedAt))
                 .map(s -> DashboardStatsResponse.PerformancePoint.builder()
                         .date(s.getStartedAt().format(DateTimeFormatter.ofPattern("MMM dd")))
                         .score(s.getOverallScore() != null ? s.getOverallScore() : 0.0)
                         .build())
                 .collect(Collectors.toList());
 
-        // 3. Determine Strongest/Weakest Areas (Simple logic based on session types)
-        // In a real app, you'd aggregate scores by 'targetRole' or 'focusAreas'
+        // 3. Get Strongest/Weakest Areas via DB
         String strongest = "General";
         String improvement = "Practice More";
 
-        if (!sessions.isEmpty()) {
-            // Find session with highest score
-            InterviewSession bestSession = sessions.stream()
-                    .max(Comparator.comparing(s -> s.getOverallScore() != null ? s.getOverallScore() : 0.0))
-                    .orElse(null);
-            if (bestSession != null) strongest = bestSession.getTargetRole();
+        InterviewSession bestSession = sessionRepository.findBestSession(userId);
+        if (bestSession != null) strongest = bestSession.getTargetRole();
 
-            // Find session with lowest score
-            InterviewSession worstSession = sessions.stream()
-                    .min(Comparator.comparing(s -> s.getOverallScore() != null ? s.getOverallScore() : 0.0))
-                    .orElse(null);
-            if (worstSession != null) improvement = worstSession.getTargetRole();
-        }
+        InterviewSession worstSession = sessionRepository.findWorstSession(userId);
+        if (worstSession != null) improvement = worstSession.getTargetRole();
 
         return DashboardStatsResponse.builder()
                 .totalPracticeCount(totalCount)
-                .averageScore(Math.round(avgScore * 10.0) / 10.0) // Round to 1 decimal
+                .averageScore(Math.round(avgScore * 10.0) / 10.0)
                 .strongestCategory(strongest)
                 .improvementArea(improvement)
                 .performanceTrend(trend)
-                .currentStreak(calculateStreak(sessions)) // Placeholder for logic
-                .weeklyGoalProgress(Math.min(totalCount, 5)) // Mock weekly goal
+                .currentStreak(calculateStreak(recentSessions)) // Logic remains same
+                .weeklyGoalProgress(Math.min(totalCount, 5))
+                .build();
+    }
+
+    private DashboardStatsResponse buildEmptyStats() {
+        return DashboardStatsResponse.builder()
+                .totalPracticeCount(0)
+                .averageScore(0.0)
+                .strongestCategory("N/A")
+                .improvementArea("N/A")
+                .performanceTrend(List.of())
+                .currentStreak(0)
+                .weeklyGoalProgress(0)
                 .build();
     }
 
     private Integer calculateStreak(List<InterviewSession> sessions) {
-        // Simple mock streak logic - count consecutive days with sessions
-        return sessions.isEmpty() ? 0 : 3; // Mocking "3 days" to encourage user
+        // Keeping simple streak logic for now
+        return sessions.isEmpty() ? 0 : 1;
     }
 }
