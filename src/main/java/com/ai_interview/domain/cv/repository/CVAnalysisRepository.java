@@ -10,4 +10,5 @@ public interface CVAnalysisRepository extends JpaRepository<CVAnalysis, Long> {
 
     // Find all CVs uploaded by a specific user, newest first
     List<CVAnalysis> findByUserIdOrderByCreatedAtDesc(UUID user_id);
+
 }
