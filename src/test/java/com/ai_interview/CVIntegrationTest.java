@@ -1,6 +1,5 @@
 package com.ai_interview;
 
-import com.ai_interview.domain.auth.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.messages.AssistantMessage;
