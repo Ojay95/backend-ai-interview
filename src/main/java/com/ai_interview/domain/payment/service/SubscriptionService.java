@@ -33,25 +33,40 @@ public class SubscriptionService {
                 .orElseGet(() -> createDefaultFreeSubscription(user));
     }
 
+    // com.ai_interview.domain.payment.service.SubscriptionService
+
     @Transactional(readOnly = true)
-    public void validateUsaAAAgeLimit(User user, String feature) {
+    public void validateUsageLimit(User user, String feature) {
+        // 1. Fetch the user's subscription to get the billing cycle start date
+        Subscription sub = subscriptionRepository.findByUserId(user.getId())
+                .orElseGet(() -> createDefaultFreeSubscription(user));
+
+        java.time.LocalDateTime cycleStart = sub.getCurrentPeriodStart();
         PlanType plan = user.getPlan();
 
-        // Feature limits
-        int cvLimit = (plan == PlanType.FREE) ? 2 : (plan == PlanType.PRO) ? 20 : Integer.MAX_VALUE;
-        int interviewLimit = (plan == PlanType.FREE) ? 1 : (plan == PlanType.PRO) ? 10 : Integer.MAX_VALUE;
+        // 2. Define Limits (including the Fair Use cap for ELITE)
+        int cvLimit = switch (plan) {
+            case FREE -> 2;
+            case PRO -> 20;
+            case ELITE -> 500; // Hidden Fair Use Cap
+        };
 
+        int interviewLimit = switch (plan) {
+            case FREE -> 1;
+            case PRO -> 10;
+            case ELITE -> 500; // Hidden Fair Use Cap
+        };
+
+        // 3. Perform the count based on the current billing cycle
         if ("CV_ANALYSIS".equals(feature)) {
-            // Use the user's Long to count their associated CV records
-            long count =  cvAnalysisRepository.findByUserIdOrderByCreatedAtDesc(user.getId()).size();
+            long count = cvAnalysisRepository.countCvAnalysesSince(user.getId(), cycleStart);
             if (count >= cvLimit) {
-                throw InterviewException.badRequest("Monthly limit reached for " + plan);
+                throw InterviewException.badRequest("Monthly CV analysis limit reached for your " + plan + " plan.");
             }
         } else if ("INTERVIEW".equals(feature)) {
-            // Use the count query from sessionRepository
-            Integer count = sessionRepository.countSessionsByUserId(user.getId());
+            Integer count = sessionRepository.countSessionsSince(user.getId(), cycleStart);
             if (count != null && count >= interviewLimit) {
-                throw InterviewException.badRequest("Monthly limit reached for " + plan + "plan");
+                throw InterviewException.badRequest("Monthly interview limit reached for your " + plan + " plan.");
             }
         }
     }
@@ -92,6 +107,4 @@ public class SubscriptionService {
     }
 
 
-    public void validateUsageLimit(User user, String cvAnalysis) {
-    }
 }

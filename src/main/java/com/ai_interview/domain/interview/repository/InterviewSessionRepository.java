@@ -28,6 +28,9 @@ public interface InterviewSessionRepository extends JpaRepository<InterviewSessi
 
     @Query("SELECT s FROM InterviewSession s WHERE s.user.id = :userId AND s.overallScore IS NOT NULL ORDER BY s.overallScore ASC LIMIT 1")
     InterviewSession findWorstSession(@Param("userId") UUID userId);
+
+    @Query("SELECT COUNT(s) FROM InterviewSession s WHERE s.user.id = :userId AND s.startedAt >= :startDate")
+    Integer countSessionsSince(@Param("userId") java.util.UUID userId, @Param("startDate") java.time.LocalDateTime startDate);
 }
 
 
