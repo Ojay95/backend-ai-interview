@@ -4,6 +4,10 @@ import com.ai_interview.common.exception.InterviewException;
 import com.ai_interview.domain.auth.entity.PlanType;
 import com.ai_interview.domain.auth.entity.User;
 import com.ai_interview.domain.auth.repository.UserRepository;
+import com.ai_interview.domain.cv.entity.CVAnalysis;
+import com.ai_interview.domain.cv.repository.CVAnalysisRepository;
+import com.ai_interview.domain.interview.repository.InterviewSessionRepository;
+import com.ai_interview.domain.interview.service.InterviewService;
 import com.ai_interview.domain.payment.entity.Subscription;
 import com.ai_interview.domain.payment.entity.SubscriptionStatus;
 import com.ai_interview.domain.payment.repository.SubscriptionRepository;
@@ -19,6 +23,8 @@ public class SubscriptionService {
 
     private final SubscriptionRepository subscriptionRepository;
     private final UserRepository userRepository;
+    private final CVAnalysisRepository cvAnalysisRepository;
+    private final InterviewSessionRepository sessionRepository;
 
     @Transactional(readOnly = true)
     public Subscription getSubscription(String email) {
@@ -27,6 +33,28 @@ public class SubscriptionService {
                 .orElseGet(() -> createDefaultFreeSubscription(user));
     }
 
+    @Transactional(readOnly = true)
+    public void validateUsaAAAgeLimit(User user, String feature) {
+        PlanType plan = user.getPlan();
+
+        // Feature limits
+        int cvLimit = (plan == PlanType.FREE) ? 2 : (plan == PlanType.PRO) ? 20 : Integer.MAX_VALUE;
+        int interviewLimit = (plan == PlanType.FREE) ? 1 : (plan == PlanType.PRO) ? 10 : Integer.MAX_VALUE;
+
+        if ("CV_ANALYSIS".equals(feature)) {
+            // Use the user's Long to count their associated CV records
+            long count =  cvAnalysisRepository.findByUserIdOrderByCreatedAtDesc(user.getId()).size();
+            if (count >= cvLimit) {
+                throw InterviewException.badRequest("Monthly limit reached for " + plan);
+            }
+        } else if ("INTERVIEW".equals(feature)) {
+            // Use the count query from sessionRepository
+            Integer count = sessionRepository.countSessionsByUserId(user.getId());
+            if (count != null && count >= interviewLimit) {
+                throw InterviewException.badRequest("Monthly limit reached for " + plan + "plan");
+            }
+        }
+    }
     @Transactional
     public Subscription upgradePlan(String email, PlanType newPlan) {
         User user = getUser(email);
@@ -60,7 +88,10 @@ public class SubscriptionService {
     }
 
     private User getUser(String email) {
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> InterviewException.notFound("User not found"));
+        return null;
+    }
+
+
+    public void validateUsageLimit(User user, String cvAnalysis) {
     }
 }

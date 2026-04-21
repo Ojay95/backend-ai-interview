@@ -3,9 +3,9 @@ POST http://localhost:8080/api/v1/auth/register
 Content-Type: application/json
 
 {
-  "firstName": "John",
-  "lastName": "Wick",
-  "email": "john.wick@continental.com",
+  "firstName": "Ojo",
+  "lastName": "Akinsola",
+  "email": "iamojay89@gmail.com",
   "password": "guns.lots.of.guns"
 }
 
@@ -24,7 +24,7 @@ POST http://localhost:8080/api/v1/auth/login
 Content-Type: application/json
 
 {
-  "email": "john.wick@continental.com",
+  "email": "iamojay89@gmail.com",
   "password": "guns.lots.of.guns"
 }
 
@@ -49,3 +49,64 @@ Accept: application/json
         client.assert(response.body.email === "john.wick@continental.com", "Email does not match!");
     });
 %}
+
+### Submit Interview for Analysis
+POST http://localhost:8080/api/v1/interviews/analyze
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+  "targetRole": "Java Developer",
+  "experienceLevel": "Mid",
+  "language": "English",
+  "techStack": ["Java", "Spring Boot"],
+  "focusAreas": ["Technical Knowledge"],
+  "durationSeconds": 300,
+  "transcript": [
+    {"sender": "Sarah", "text": "Tell me about yourself."},
+    {"sender": "You", "text": "I am a software engineer with 5 years of experience."}
+  ]
+}
+
+### Get Interview History
+GET http://localhost:8080/api/v1/interviews/history
+Authorization: Bearer {{auth_token}}
+
+
+### Get Dashboard Stats
+GET http://localhost:8080/api/v1/analytics/dashboard
+Authorization: Bearer {{auth_token}}
+
+### Get My Preferences
+GET http://localhost:8080/api/v1/user/preferences
+Authorization: Bearer {{auth_token}}
+
+### Update Preferences
+PUT http://localhost:8080/api/v1/user/preferences
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+  "voiceModel": "Echo",
+  "speechSpeed": 1.2,
+  "interviewerPersona": "executive"
+}
+
+### Submit Support Ticket
+POST http://localhost:8080/api/v1/public/support/contact
+Content-Type: application/json
+
+{
+  "firstName": "John",
+  "lastName": "Wick",
+  "email": "john@example.com",
+  "message": "I need help with my account."
+}
+
+### Forgot Password Request
+POST http://localhost:8080/api/v1/auth/forgot-password
+Content-Type: application/json
+
+{
+  "email": "iamojay89@gmail.com"
+}

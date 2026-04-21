@@ -1,5 +1,6 @@
 package com.ai_interview.domain.interview.controller;
 
+import com.ai_interview.domain.interview.dto.ChatRequest;
 import com.ai_interview.domain.interview.dto.InterviewHistoryDto;
 import com.ai_interview.domain.interview.dto.InterviewRequest;
 import com.ai_interview.domain.interview.service.InterviewService;
@@ -47,5 +48,19 @@ public class InterviewController {
         String email = authentication.getName();
         List<InterviewHistoryDto> history = interviewService.getUserInterviewHistory(email);
         return ResponseEntity.ok(history);
+    }
+
+    @PostMapping("/{sessionId}/chat")
+    public ResponseEntity<Map<String, String>> chat(
+            @PathVariable Long sessionId,
+            @RequestBody ChatRequest request,
+            Authentication authentication
+    ) {
+        String aiMessage = interviewService.handleChatTurn(
+                sessionId,
+                authentication.getName(),
+                request.getMessage()
+        );
+        return ResponseEntity.ok(Map.of("aiMessage", aiMessage));
     }
 }

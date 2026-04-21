@@ -6,15 +6,16 @@ import com.ai_interview.domain.auth.repository.UserRepository;
 import com.ai_interview.domain.interview.dto.InterviewHistoryDto;
 import com.ai_interview.domain.interview.dto.InterviewRequest;
 import com.ai_interview.domain.interview.dto.TranscriptDto;
-import com.ai_interview.domain.interview.entity.InterviewSession;
-import com.ai_interview.domain.interview.entity.InterviewStatus;
-import com.ai_interview.domain.interview.entity.SenderType;
-import com.ai_interview.domain.interview.entity.Transcript;
+import com.ai_interview.domain.interview.entity.*;
 import com.ai_interview.domain.interview.repository.InterviewSessionRepository;
+import com.ai_interview.domain.payment.service.SubscriptionService;
+import com.ai_interview.domain.user.entity.UserPreference;
+import com.ai_interview.domain.user.repository.UserPreferenceRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.prompt.Prompt;
@@ -22,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.Duration;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -32,16 +34,81 @@ public class InterviewService {
 
     private final InterviewSessionRepository sessionRepository;
     private final UserRepository userRepository;
+    private final UserPreferenceRepository preferenceRepository;
     private final ChatModel chatModel;
-    private final ObjectMapper objectMapper; // For parsing JSON response
+    private final ObjectMapper objectMapper;
+    private final SubscriptionService subscriptionService;
+    /**
+     * Handles a live chat turn during the interview.
+     * Manages persona, language enforcement, and time-aware wrap-up logic.
+     */
+    @Transactional
+    public String handleChatTurn(Long sessionId, String userEmail, String userMessage) {
+        // 1. Validate Session
+        InterviewSession session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> InterviewException.notFound("Session not found"));
 
+        if (!session.getUser().getEmail().equals(userEmail)) {
+            throw InterviewException.badRequest("Unauthorized access to this session");
+        }
+
+        // 2. Calculate remaining time
+        long secondsElapsed = Duration.between(session.getStartedAt(), LocalDateTime.now()).getSeconds();
+        long secondsLeft = session.getDurationSeconds() - secondsElapsed;
+
+        // 3. Fetch Persona Preferences
+        UserPreference prefs = preferenceRepository.findByUserId(session.getUser().getId())
+                .orElse(new UserPreference()); // Default: Zephyr, 1.0 speed, recruiter persona
+
+        // 4. Determine AI Instruction based on time left
+        String timingInstruction = "Ask a concise, challenging interview question relevant to the role.";
+        if (secondsLeft < 40) {
+            timingInstruction = "The time is almost up. DO NOT ask a new question. " +
+                    "Instead, thank the user for their time and ask them for any final thoughts to wrap up.";
+        } else if (secondsLeft < 90) {
+            timingInstruction = "The interview is nearing its end. Ask one final question and mention that time is short.";
+        }
+
+        // 5. Build Strict System Message
+        String systemInstruction = String.format(
+                "You are Sarah, an expert %s. You are conducting a %s interview for a %s role. " +
+                        "STRICT RULES:\n" +
+                        "1. You must speak ONLY in %s.\n" +
+                        "2. Do not interrupt the user.\n" +
+                        "3. Current Task: %s",
+                prefs.getInterviewerPersona(), session.getExperienceLevel(),
+                session.getTargetRole(), session.getLanguage(), timingInstruction
+        );
+
+        // 6. Persist User message and gather history
+        addTranscriptEntry(session, SenderType.USER, userMessage);
+        String history = session.getTranscripts().stream()
+                .map(t -> t.getSender() + ": " + t.getContent())
+                .collect(Collectors.joining("\n"));
+
+        // 7. Call AI
+        SystemMessage systemMsg = new SystemMessage(systemInstruction);
+        UserMessage userMsg = new UserMessage("Current conversation history:\n" + history);
+
+        String aiResponse = chatModel.call(new Prompt(List.of(systemMsg, userMsg)))
+                .getResult().getOutput().getText();
+
+        // 8. Persist AI response and save session
+        addTranscriptEntry(session, SenderType.AI, aiResponse);
+        sessionRepository.save(session);
+
+        return aiResponse;
+    }
+
+    /**
+     * Finalizes the session and performs the full AI analysis.
+     */
     @Transactional
     public String saveAndAnalyzeSession(String userEmail, InterviewRequest request) {
-        // 1. Fetch User
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> InterviewException.notFound("User not found"));
+        subscriptionService.validateUsageLimit(user, "INTERVIEW");
 
-        // 2. Create Session Entity
         InterviewSession session = InterviewSession.builder()
                 .user(user)
                 .targetRole(request.getTargetRole())
@@ -53,22 +120,19 @@ public class InterviewService {
                 .status(InterviewStatus.COMPLETED)
                 .build();
 
-        // 3. Map Transcripts
         List<Transcript> transcriptEntities = request.getTranscript().stream()
                 .map(dto -> Transcript.builder()
                         .session(session)
                         .sender(dto.getSender().equalsIgnoreCase("Sarah") ? SenderType.AI : SenderType.USER)
                         .content(dto.getText())
-                        .timestamp(LocalDateTime.now()) // Approximation since we don't send raw timestamps
+                        .timestamp(LocalDateTime.now())
                         .build())
                 .collect(Collectors.toList());
 
         session.setTranscripts(transcriptEntities);
 
-        // 4. Run AI Analysis
         String analysisJson = generateAnalysis(request.getTranscript(), request.getTargetRole());
 
-        // 5. Extract Score & Save
         try {
             JsonNode root = objectMapper.readTree(analysisJson);
             if (root.has("overallScore")) {
@@ -85,65 +149,26 @@ public class InterviewService {
     }
 
     private String generateAnalysis(List<TranscriptDto> transcripts, String targetRole) {
-        // Convert transcripts to string format for the prompt
         String chatHistory = transcripts.stream()
                 .map(t -> t.getSender() + ": " + t.getText())
                 .collect(Collectors.joining("\n"));
 
-        // EXACT PROMPT from your AnalysisScreen.tsx
         String promptText = """
             Act as an expert interview coach. Analyze the PROVIDED transcript for a %s role.
-            Analyze ONLY the questions and answers that appear in the transcript.
-            
-            Return a STRICT JSON object (no markdown). The format must match this structure exactly:
-            {
-              "overallScore": number (0-100),
-              "performanceTag": "Excellent" | "Professional" | "Needs Improvement",
-              "summary": "string",
-              "keyStrengths": ["string", "string"],
-              "growthAreas": ["string", "string"],
-              "scoreBreakdown": [
-                 {"label": "Technical Knowledge", "value": number},
-                 {"label": "Cultural Fit", "value": number},
-                 {"label": "Problem Solving", "value": number},
-                 {"label": "Communication Skills", "value": number},
-                 {"label": "Confidence & Clarity", "value": number}
-              ],
-              "visualMetrics": {
-                 "eyeContactScore": number,
-                 "postureScore": number,
-                 "energyLevel": "High" | "Medium" | "Low",
-                 "visualFeedback": "string"
-              },
-              "detailedAnalysis": [
-                {
-                  "question": "string",
-                  "userTranscript": "string",
-                  "answerStatus": "Strong Answer" | "Average Answer" | "Weak" | "Lacks Detail",
-                  "statusColor": "green" | "amber" | "red",
-                  "critique": "string",
-                  "improvedAnswer": "string"
-                }
-              ]
-            }
+            Return a STRICT JSON object (no markdown). 
+            (Insert Full JSON Schema from prototype here...)
             
             TRANSCRIPT:
-            ---
             %s
-            ---
             """;
 
         String finalMessage = String.format(promptText, targetRole, chatHistory);
 
-        return chatModel.call(new Prompt(new UserMessage(finalMessage)))
-                .getResult()
-                .getOutput()
-                .getText()
-                .replace("```json", "")
-                .replace("```", "")
-                .trim();
-    }
+        String rawResponse = chatModel.call(new Prompt(new UserMessage(finalMessage)))
+                .getResult().getOutput().getText();
 
+        return rawResponse.replaceAll("(?s)```json\\s*|\\s*```", "").trim();
+    }
 
     @Transactional(readOnly = true)
     public List<InterviewHistoryDto> getUserInterviewHistory(String userEmail) {
@@ -154,5 +179,15 @@ public class InterviewService {
                 .stream()
                 .map(InterviewHistoryDto::from)
                 .collect(Collectors.toList());
+    }
+
+    private void addTranscriptEntry(InterviewSession session, SenderType sender, String content) {
+        Transcript transcript = Transcript.builder()
+                .session(session)
+                .sender(sender)
+                .content(content)
+                .timestamp(LocalDateTime.now())
+                .build();
+        session.getTranscripts().add(transcript);
     }
 }

@@ -6,9 +6,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 import java.util.UUID;
 
-public interface CVAnalysisRepository extends JpaRepository<CVAnalysis, UUID> {
+public interface CVAnalysisRepository extends JpaRepository<CVAnalysis, Long> {
 
     // Find all CVs uploaded by a specific user, newest first
-    List<CVAnalysis> findByUserIdOrderByCreatedAtDesc(UUID user_id);
+    List<CVAnalysis> findByUserIdOrderByCreatedAtDesc(UUID userId);
+
 
 }
