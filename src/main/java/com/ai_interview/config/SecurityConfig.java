@@ -43,7 +43,8 @@ public class SecurityConfig {
                                 "/api/v1/public/**",
                                 "/error",
                                 "/v3/api-docs/**",
-                                "/swagger-ui/**"
+                                "/swagger-ui/**",
+                                "/api/v1/payments/webhook"
                         ).permitAll()
                         // Secure H2-Console for development only (remove in true production)
                         .requestMatchers("/h2-console/**").permitAll()
