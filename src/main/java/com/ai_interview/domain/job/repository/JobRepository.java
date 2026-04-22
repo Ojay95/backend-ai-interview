@@ -8,4 +8,6 @@ public interface JobRepository extends JpaRepository<Job, Long> {
     List<Job> findByIsFeaturedTrueOrderByCreatedAtDesc();
 
     List<Job> findAllByOrderByCreatedAtDesc();
+    List<Job> findByCategoryOrderByCreatedAtDesc(String category);
+
 }

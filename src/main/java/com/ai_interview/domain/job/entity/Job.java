@@ -34,6 +34,11 @@ public class Job {
 
     private String logoUrl;
 
+    // com.ai_interview.domain.job.entity.Job
+
+    @Column(nullable = false)
+    private String category; // e.g., "Healthcare", "Finance", "Technology"
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 

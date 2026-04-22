@@ -31,4 +31,9 @@ public class JobController {
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
+
+    @GetMapping("/category/{category}")
+    public ResponseEntity<List<Job>> getJobsByCategory(@PathVariable String category) {
+        return ResponseEntity.ok(jobRepository.findByCategoryOrderByCreatedAtDesc(category));
+    }
 }

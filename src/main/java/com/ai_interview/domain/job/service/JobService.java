@@ -48,31 +48,33 @@ public class JobService {
      * AI POWERED: Seeds the database with AI-generated jobs.
      * Fixed: Added JSON parsing and persistence logic.
      */
+    // com.ai_interview.domain.job.service.JobService
+
     @Transactional
-    public void seedJobsWithAI(String techStack) {
+    public void seedJobsWithAI(String industry) {
         String prompt = String.format(
-                "Generate a list of 3 realistic, high-quality job openings for %s roles. " +
-                        "Return ONLY a JSON array. Do not include markdown formatting. " +
-                        "Fields: title, company, location, type, salaryRange, description.",
-                techStack
+                "Generate a list of 5 diverse job openings for the %s industry. " +
+                        "Return ONLY a JSON array. " +
+                        "Fields: title, company, location, type, salaryRange, description, category.",
+                industry
         );
 
         try {
             String response = chatModel.call(prompt);
-
-            // Clean AI markdown if present (e.g., ```json ... ```)
             String jsonContent = response.replaceAll("(?s)```json\\s*|\\s*```", "").trim();
 
-            // Parse the string into a List of Job entities
             List<Job> aiJobs = objectMapper.readValue(jsonContent, new TypeReference<List<Job>>() {});
 
-            // Save to database
+            aiJobs.forEach(job -> {
+                if (job.getCategory() == null) job.setCategory(industry);
+            });
+
             jobRepository.saveAll(aiJobs);
-            log.info("Successfully seeded {} AI jobs for tech stack: {}", aiJobs.size(), techStack);
+            log.info("Successfully seeded {} AI jobs for category: {}", aiJobs.size(), industry);
 
         } catch (Exception e) {
             log.error("Failed to seed AI jobs: {}", e.getMessage());
-            throw InterviewException.badRequest("AI Job generation failed: " + e.getMessage());
+            throw InterviewException.badRequest("AI Job generation failed.");
         }
     }
 }
