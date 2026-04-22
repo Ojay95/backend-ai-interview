@@ -4,7 +4,6 @@ import com.ai_interview.domain.auth.entity.PlanType;
 import com.ai_interview.domain.payment.service.SubscriptionService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.HmacAlgorithms;

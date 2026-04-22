@@ -39,6 +39,7 @@ public class Job {
     @Column(nullable = false)
     private String category; // e.g., "Healthcare", "Finance", "Technology"
 
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 

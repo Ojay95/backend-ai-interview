@@ -8,6 +8,8 @@ import com.ai_interview.domain.cv.repository.CVAnalysisRepository;
 import com.ai_interview.domain.job.entity.Job;
 import com.ai_interview.domain.job.service.JobService;
 import com.ai_interview.domain.payment.service.SubscriptionService;
+import com.ai_interview.domain.resume.entity.Resume;
+import com.ai_interview.domain.resume.repository.ResumeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.messages.UserMessage;
@@ -27,10 +29,11 @@ public class CVService {
     private final CVAnalysisRepository cvAnalysisRepository;
     private final UserRepository userRepository;
     private final SubscriptionService subscriptionService;
-    private final JobService jobService; // Added for Job Board integration
+    private final JobService jobService;
+    private final ResumeRepository resumeRepository;
 
     /**
-     * AI POWERED: Analyzes a CV against a specific Job from the Job Board.
+     * AI POWERED: Analyzes an uploaded PDF CV against a specific Job from the Job Board.
      */
     @Transactional
     public CVAnalysis analyzeAgainstJob(Long jobId, MultipartFile file, String userEmail) {
@@ -39,27 +42,55 @@ public class CVService {
     }
 
     /**
-     * Analyzes a CV against a provided Job Description string.
+     * AI POWERED: Analyzes a saved Resume profile against a Job Description.
+     * This allows users to match their platform profile without re-uploading a file.
+     */
+    @Transactional
+    public CVAnalysis analyzeSavedResume(Long resumeId, String jobDescription, String userEmail) {
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> InterviewException.notFound("User not found"));
+
+        Resume resume = resumeRepository.findById(resumeId)
+                .orElseThrow(() -> InterviewException.notFound("Resume not found"));
+
+        if (!resume.getUser().getId().equals(user.getId())) {
+            throw InterviewException.badRequest("Unauthorized access to this resume");
+        }
+
+        subscriptionService.validateUsageLimit(user, "CV_ANALYSIS");
+
+        // Use the saved JSON content from the editor as the source for AI analysis
+        String aiResponseJson = generateAIAnalysis(resume.getContentJson(), jobDescription);
+
+        CVAnalysis analysis = CVAnalysis.builder()
+                .user(user)
+                .fileName(resume.getResumeName() + " (Saved Profile)")
+                .extractedText(resume.getContentJson())
+                .jobDescription(jobDescription)
+                .aiResponseJson(aiResponseJson)
+                .build();
+
+        return cvAnalysisRepository.save(analysis);
+    }
+
+    /**
+     * Analyzes an uploaded PDF CV against a provided Job Description string.
      */
     @Transactional
     public CVAnalysis analyzeCV(MultipartFile file, String jobDescription, String userEmail) {
-        // 1. Validate User and Subscription Limits
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> InterviewException.notFound("User not found"));
 
         subscriptionService.validateUsageLimit(user, "CV_ANALYSIS");
 
-        // 2. Extract Text from PDF
         String cvText = pdfExtractorService.extractText(file);
         if (cvText.length() > 40000) {
             log.warn("CV for user {} was truncated due to length", userEmail);
             cvText = cvText.substring(0, 40000);
         }
 
-        // 3. Generate AI Match Analysis
         String aiResponseJson = generateAIAnalysis(cvText, jobDescription);
 
-        // 4. Persist Analysis Result
         CVAnalysis analysis = CVAnalysis.builder()
                 .user(user)
                 .fileName(file.getOriginalFilename())
@@ -71,6 +102,9 @@ public class CVService {
         return cvAnalysisRepository.save(analysis);
     }
 
+    /**
+     * Centralized AI Logic: Ensures consistent JSON structure regardless of source (File or Saved Resume).
+     */
     private String generateAIAnalysis(String cvText, String jobDescription) {
         String promptText = """
             Act as an expert technical recruiter. Analyze the following Resume against the Job Description.
@@ -113,7 +147,6 @@ public class CVService {
                     .getOutput()
                     .getText();
 
-            // Clean markdown and any leading/trailing whitespace
             return response.replaceAll("(?s)```json\\s*|\\s*```", "").trim();
         } catch (Exception e) {
             log.error("Gemini AI Analysis failed", e);
