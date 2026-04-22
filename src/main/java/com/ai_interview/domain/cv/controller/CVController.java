@@ -7,6 +7,8 @@ import com.ai_interview.domain.cv.service.CVService;
 import com.ai_interview.domain.auth.entity.User;
 import com.ai_interview.domain.auth.repository.UserRepository;
 import com.ai_interview.common.exception.InterviewException;
+import com.ai_interview.domain.job.entity.Job;
+import com.ai_interview.domain.job.service.JobService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -24,6 +26,7 @@ public class CVController {
     private final CVService cvService;
     private final CVAnalysisRepository cvAnalysisRepository;
     private final UserRepository userRepository;
+    private final JobService jobService;
 
     /**
      * Upload a PDF and get instant AI analysis
@@ -62,5 +65,26 @@ public class CVController {
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(response);
+    }
+
+    // Add this to com.ai_interview.domain.cv.controller.CVController
+
+    @PostMapping("/match-job/{jobId}")
+    public ResponseEntity<CVAnalysisResponse> matchCvToJob(
+            @PathVariable Long jobId,
+            @RequestParam("file") MultipartFile file,
+            Authentication authentication
+    ) {
+        // 1. Get the Job from the new Job Board module
+        Job job = jobService.getJobById(jobId);
+
+        // 2. Pass the Job's AI-ready description to the existing CV Analysis service
+        CVAnalysisResponse result = CVAnalysisResponse.from(cvService.analyzeCV(
+                file,
+                job.getDescription(),
+                authentication.getName()
+        ));
+
+        return ResponseEntity.ok(result);
     }
 }
