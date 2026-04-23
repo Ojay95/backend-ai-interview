@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: ai-interview-backend
+    runtime: docker
+    plan: free # Change to 'starter' for production
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: GEMINI_API_KEY
+        sync: false # Render will prompt you to enter this in the dashboard
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
+      - key: SPRING_DATASOURCE_URL
+        fromDatabase:
+          name: ai-interview-db
+          property: connectionString
+      - key: SPRING_DATASOURCE_USERNAME
+        fromDatabase:
+          name: ai-interview-db
+          property: user
+      - key: SPRING_DATASOURCE_PASSWORD
+        fromDatabase:
+          name: ai-interview-db
+          property: password
+
+databases:
+  - name: ai-interview-db
+    plan: free
+    databaseName: interview_platform
+    user: admin
