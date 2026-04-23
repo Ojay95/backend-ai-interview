@@ -5,7 +5,7 @@ COPY . .
 RUN mvn clean package -DskipTests
 
 # Run Stage
-FROM eclipse-temurin:21-jdk-jammy
+FROM eclipse-temurin:22-jdk-jammy
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
 EXPOSE 10000
