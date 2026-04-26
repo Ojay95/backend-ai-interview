@@ -3,12 +3,13 @@
     <option name="ALTERNATIVE_JRE_PATH" value="22" />
     <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="true" />
     <envs>
-      <env name="SPRING_DATASOURCE_PASSWORD" value="Ojay89" />
-      <env name="SPRING_DATASOURCE_URL" value="jdbc:postgresql://localhost:5432/mockinterview_db" />
-      <env name="SPRING_DATASOURCE_USERNAME" value="postgres" />
       <env name="GEMINI_API_KEY" value="AIzaSyBEKPMuyZxah8voCt0GR4sqj_JGwAJJETo" />
       <env name="JWT_SECRET" value="5367566B59703373367639792F423F4528482B4D6251655468576D5A71347437" />
       <env name="PAYSTACK_SECRET_KEY" value="sk_test_d936f04075e11baebbe21e067d8afafca7e60958" />
+      <env name="SPRING_DATASOURCE_PASSWORD" value="Ojay89" />
+      <env name="SPRING_DATASOURCE_URL" value="jdbc:postgresql://localhost:5432/mockinterview_db" />
+      <env name="SPRING_DATASOURCE_USERNAME" value="postgres" />
+      <env name="MAIL_PASSWORD" value="xtgf dhtu nhze vaji" />
     </envs>
     <module name="ai_interview" />
     <option name="SPRING_BOOT_MAIN_CLASS" value="com.ai_interview.AiInterviewApplication" />
