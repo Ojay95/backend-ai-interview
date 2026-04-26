@@ -4,7 +4,7 @@ services:
     runtime: docker
     envVars:
       - key: SPRING_DATASOURCE_URL
-        # This builds the exact string Spring Boot needs
+        # We manually prefix the host, port, and name with 'jdbc:postgresql://'
         value: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
       - key: DB_HOST
         fromDatabase:
@@ -20,19 +20,16 @@ services:
           property: database
       - key: SPRING_DATASOURCE_USERNAME
         fromDatabase:
-          name: ai-in                                                                                                                                                                                                                                                                                                                                                                                    terview-db
+          name: ai-interview-db
           property: user
       - key: SPRING_DATASOURCE_PASSWORD
         fromDatabase:
           name: ai-interview-db
           property: password
-      # Ensure your AI and Payment keys are also mapped
       - key: GEMINI_API_KEY
         sync: false
       - key: PAYSTACK_SECRET_KEY
         sync: false
-      - key: JWT_SECRET
-        generateValue: true
 
 databases:
   - name: ai-interview-db
