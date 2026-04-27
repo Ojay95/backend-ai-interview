@@ -1,9 +1,13 @@
+### Variables
+@host = https://backend-ai-interview-jx2h.onrender.com
+
 ### 1. Register a New User
-POST http://localhost:8080/api/v1/auth/register
+# This will automatically save the token to {{auth_token}}
+POST {{host}}/api/v1/auth/register
 Content-Type: application/json
 
 {
-  "firstName": "Ojo",
+  "firstName": "AbdulAhmid",
   "lastName": "Akinsola",
   "email": "iamojay89@gmail.com",
   "password": "guns.lots.of.guns"
@@ -11,16 +15,16 @@ Content-Type: application/json
 
 > {%
     client.test("Request executed successfully", function() {
-        client.assert(response.status === 201, "Response status is not 201");
+        client.assert(response.status === 200 || response.status === 201, "Response status is not 200/201");
     });
-    // Save the token automatically to a variable named 'auth_token'
-    client.global.set("auth_token", response.body.token);
+    // Matches your AuthResponse.java field 'access_token'
+    client.global.set("auth_token", response.body.access_token);
 %}
 
 ###
 
 ### 2. Login (Get Token)
-POST http://localhost:8080/api/v1/auth/login
+POST {{host}}/api/v1/auth/login
 Content-Type: application/json
 
 {
@@ -29,60 +33,62 @@ Content-Type: application/json
 }
 
 > {%
-    client.test("Request executed successfully", function() {
+    client.test("Login successful", function() {
         client.assert(response.status === 200, "Response status is not 200");
     });
-    // Update the token variable
-    client.global.set("auth_token", response.body.token);
+    // Saves the token for all subsequent requests
+    client.global.set("auth_token", response.body.access_token);
 %}
 
 ###
 
-### 3. Get My Profile (Protected Endpoint)
-GET http://localhost:8080/api/v1/users/profile
+### 3. Get My Profile (Protected)
+GET {{host}}/api/v1/users/me
 Authorization: Bearer {{auth_token}}
 Accept: application/json
 
-> {%
-    client.test("Request executed successfully", function() {
-        client.assert(response.status === 200, "Response status is not 200");
-        client.assert(response.body.email === "john.wick@continental.com", "Email does not match!");
-    });
-%}
+### 4. Get All Jobs (Public)
+GET {{host}}/api/v1/jobs
+Accept: application/json
 
-### Submit Interview for Analysis
-POST http://localhost:8080/api/v1/interviews/analyze
+### 5. Seed Jobs (Populate database)
+POST {{host}}/api/v1/jobs/seed?industry=Technology
+Authorization: Bearer {{auth_token}}
+
+### 6. Start Interview Session
+POST {{host}}/api/v1/interviews/start
 Authorization: Bearer {{auth_token}}
 Content-Type: application/json
 
 {
-  "targetRole": "Java Developer",
-  "experienceLevel": "Mid",
-  "language": "English",
-  "techStack": ["Java", "Spring Boot"],
-  "focusAreas": ["Technical Knowledge"],
-  "durationSeconds": 300,
-  "transcript": [
-    {"sender": "Sarah", "text": "Tell me about yourself."},
-    {"sender": "You", "text": "I am a software engineer with 5 years of experience."}
-  ]
+  "jobId": 1,
+  "cvId": 1
 }
 
-### Get Interview History
-GET http://localhost:8080/api/v1/interviews/history
+### 7. Chat with Sarah (AI Interviewer)
+POST {{host}}/api/v1/interviews/chat
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+  "sessionId": 1,
+  "userMessage": "I am a backend developer with experience in Java and Spring Boot."
+}
+
+### 8. Get Interview History
+GET {{host}}/api/v1/interviews/history
 Authorization: Bearer {{auth_token}}
 
-
-### Get Dashboard Stats
-GET http://localhost:8080/api/v1/analytics/dashboard
+### 9. Get Dashboard Stats
+GET {{host}}/api/v1/analytics/stats
 Authorization: Bearer {{auth_token}}
 
-### Get My Preferences
-GET http://localhost:8080/api/v1/user/preferences
+### 10. Get My Preferences
+GET {{host}}/api/v1/user/preferences
 Authorization: Bearer {{auth_token}}
 
-### Update Preferences
-PUT http://localhost:8080/api/v1/user/preferences
+### 11. Update Preferences
+PUT {{host}}/api/v1/user/preferences
 Authorization: Bearer {{auth_token}}
 Content-Type: application/json
 
@@ -92,21 +98,13 @@ Content-Type: application/json
   "interviewerPersona": "executive"
 }
 
-### Submit Support Ticket
-POST http://localhost:8080/api/v1/public/support/contact
+### 12. Submit Support Ticket (Public)
+POST {{host}}/api/v1/public/support/contact
 Content-Type: application/json
 
 {
-  "firstName": "John",
-  "lastName": "Wick",
-  "email": "john@example.com",
-  "message": "I need help with my account."
-}
-
-### Forgot Password Request
-POST http://localhost:8080/api/v1/auth/forgot-password
-Content-Type: application/json
-
-{
-  "email": "iamojay89@gmail.com"
+  "firstName": "Abdul",
+  "lastName": "Akinsola",
+  "email": "jayclassics2000@gmail.com",
+  "message": "I need help with my live deployment."
 }

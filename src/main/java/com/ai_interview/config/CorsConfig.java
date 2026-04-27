@@ -6,6 +6,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Configuration
@@ -16,17 +17,34 @@ public class CorsConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         CorsConfiguration config = new CorsConfiguration();
 
-        // Allow Frontend URL
-        config.setAllowedOrigins(List.of("http://localhost:3000", "http://127.0.0.1:3000"));
+        // 1. Allow Frontend URLs
+        // We include localhost 5173 (Vite), 3000 (standard React),
+        // and a placeholder for your future Netlify production URL.
+        config.setAllowedOrigins(List.of(
+                "http://localhost:5173",
+                "http://127.0.0.1:5173",
+                "http://localhost:3000",
+                "https://your-mock-interview-app.netlify.app"
+        ));
 
-        // Allow standard HTTP methods
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        // 2. Allow standard HTTP methods
+        config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
 
-        // Allow Auth headers
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+        // 3. Allow All Headers
+        // Using "*" is safer during development to ensure headers like
+        // 'Authorization' and 'Content-Type' are never blocked.
+        config.setAllowedHeaders(List.of("*"));
 
-        // Allow credentials (needed if you use cookies, but good to have)
+        // 4. Expose Headers
+        // This allows the frontend to read the Authorization header if needed
+        config.setExposedHeaders(List.of("Authorization"));
+
+        // 5. Allow Credentials
+        // Essential for sessions and cookies
         config.setAllowCredentials(true);
+
+        // Max age of the CORS preflight request (1 hour)
+        config.setMaxAge(3600L);
 
         source.registerCorsConfiguration("/**", config);
         return new CorsFilter(source);
