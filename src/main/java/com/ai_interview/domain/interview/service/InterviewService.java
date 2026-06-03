@@ -19,6 +19,7 @@ import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -103,6 +104,7 @@ public class InterviewService {
     /**
      * Finalizes the session and performs the full AI analysis.
      */
+    @CacheEvict(value = "dashboardStats", key = "#userEmail")
     @Transactional
     public String saveAndAnalyzeSession(String userEmail, InterviewRequest request) {
         User user = userRepository.findByEmail(userEmail)

@@ -8,6 +8,7 @@ import com.ai_interview.domain.interview.entity.InterviewSession;
 import com.ai_interview.domain.interview.repository.InterviewSessionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +25,7 @@ public class AnalyticsService {
     private final InterviewSessionRepository sessionRepository;
     private final UserRepository userRepository;
 
+    @Cacheable(value = "dashboardStats", key = "#userEmail")
     @Transactional(readOnly = true)
     public DashboardStatsResponse getDashboardStats(String userEmail) {
         User user = userRepository.findByEmail(userEmail)
