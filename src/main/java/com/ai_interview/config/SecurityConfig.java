@@ -73,7 +73,11 @@ public class SecurityConfig {
 
         // RESTRICT THIS: Replace "*" with your actual frontend URL (e.g., https://mockinterview.ai)
         // for production security.
-        configuration.setAllowedOrigins(List.of("https://mockai-interview.netlify.app/"));
+        configuration.setAllowedOrigins(List.of(
+                "http://localhost:5173",
+                "http://localhost:3000",
+                "https://mockai-interview.netlify.app"
+        ));
 
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Cache-Control"));

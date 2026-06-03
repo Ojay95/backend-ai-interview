@@ -181,6 +181,16 @@ public class InterviewService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public String getSessionFeedback(Long sessionId, String userEmail) {
+        InterviewSession session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> InterviewException.notFound("Session not found"));
+        if (!session.getUser().getEmail().equals(userEmail)) {
+            throw InterviewException.badRequest("Unauthorized access to this session");
+        }
+        return session.getFeedbackJson();
+    }
+
     private void addTranscriptEntry(InterviewSession session, SenderType sender, String content) {
         Transcript transcript = Transcript.builder()
                 .session(session)

@@ -21,7 +21,9 @@ public class CorsConfig {
         // We include localhost 5173 (Vite), 3000 (standard React),
         // and a placeholder for your future Netlify production URL.
         config.setAllowedOrigins(List.of(
-                "https://mockai-interview.netlify.app/"
+                "http://localhost:5173",
+                "http://localhost:3000",
+                "https://mockai-interview.netlify.app"
         ));
 
         // 2. Allow standard HTTP methods

@@ -103,6 +103,29 @@ public class CVService {
     }
 
     /**
+     * AI POWERED: Analyzes raw CV text against a Job Description.
+     */
+    @Transactional
+    public CVAnalysis analyzeCVText(String cvText, String jobDescription, String userEmail) {
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> InterviewException.notFound("User not found"));
+
+        subscriptionService.validateUsageLimit(user, "CV_ANALYSIS");
+
+        String aiResponseJson = generateAIAnalysis(cvText, jobDescription);
+
+        CVAnalysis analysis = CVAnalysis.builder()
+                .user(user)
+                .fileName("Resume Text Profile")
+                .extractedText(cvText)
+                .jobDescription(jobDescription)
+                .aiResponseJson(aiResponseJson)
+                .build();
+
+        return cvAnalysisRepository.save(analysis);
+    }
+
+    /**
      * Centralized AI Logic: Ensures consistent JSON structure regardless of source (File or Saved Resume).
      */
     private String generateAIAnalysis(String cvText, String jobDescription) {

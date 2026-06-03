@@ -87,4 +87,23 @@ public class CVController {
 
         return ResponseEntity.ok(result);
     }
+
+    @PostMapping("/analyze-text")
+    public ResponseEntity<CVAnalysisResponse> analyzeCVText(
+            @RequestBody MatchTextRequest request,
+            Authentication authentication
+    ) {
+        CVAnalysis savedAnalysis = cvService.analyzeCVText(
+                request.getResumeText(),
+                request.getJobDescription(),
+                authentication.getName()
+        );
+        return ResponseEntity.ok(CVAnalysisResponse.from(savedAnalysis));
+    }
+
+    @lombok.Data
+    public static class MatchTextRequest {
+        private String resumeText;
+        private String jobDescription;
+    }
 }

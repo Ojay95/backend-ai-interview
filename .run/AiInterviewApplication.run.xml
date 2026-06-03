@@ -1,7 +1,6 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="AiInterviewApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot">
     <option name="ALTERNATIVE_JRE_PATH" value="22" />
-    <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="true" />
     <envs>
       <env name="GEMINI_API_KEY" value="AIzaSyBEKPMuyZxah8voCt0GR4sqj_JGwAJJETo" />
       <env name="JWT_SECRET" value="5367566B59703373367639792F423F4528482B4D6251655468576D5A71347437" />

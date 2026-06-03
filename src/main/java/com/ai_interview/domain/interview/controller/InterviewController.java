@@ -63,4 +63,14 @@ public class InterviewController {
         );
         return ResponseEntity.ok(Map.of("aiMessage", aiMessage));
     }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<AnalysisWrapper> getInterviewDetails(
+            @PathVariable Long id,
+            Authentication authentication
+    ) {
+        String email = authentication.getName();
+        String feedback = interviewService.getSessionFeedback(id, email);
+        return ResponseEntity.ok(new AnalysisWrapper(feedback));
+    }
 }
