@@ -106,4 +106,32 @@ public class CVController {
         private String resumeText;
         private String jobDescription;
     }
+
+    @PostMapping("/optimize")
+    public ResponseEntity<CvOptimizationResponse> optimizeCV(
+            @RequestBody CvOptimizationRequest request,
+            Authentication authentication
+    ) {
+        CvOptimizationResponse response = cvService.optimizeCVText(
+                request.getResumeText(),
+                request.getJobDescription(),
+                authentication.getName()
+        );
+        return ResponseEntity.ok(response);
+    }
+
+    @lombok.Data
+    public static class CvOptimizationRequest {
+        private String resumeText;
+        private String jobDescription;
+    }
+
+    @lombok.Data
+    @lombok.Builder
+    @lombok.NoArgsConstructor
+    @lombok.AllArgsConstructor
+    public static class CvOptimizationResponse {
+        private String optimizedResumeMarkdown;
+        private List<String> changelog;
+    }
 }

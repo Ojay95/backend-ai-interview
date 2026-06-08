@@ -19,6 +19,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.ai_interview.domain.cv.controller.CVController.CvOptimizationResponse;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -31,6 +34,7 @@ public class CVService {
     private final SubscriptionService subscriptionService;
     private final JobService jobService;
     private final ResumeRepository resumeRepository;
+    private final ObjectMapper objectMapper;
 
     /**
      * AI POWERED: Analyzes an uploaded PDF CV against a specific Job from the Job Board.
@@ -174,6 +178,59 @@ public class CVService {
         } catch (Exception e) {
             log.error("Gemini AI Analysis failed", e);
             throw InterviewException.internalError("The AI matching service is temporarily unavailable.");
+        }
+    }
+
+    @Transactional
+    public CvOptimizationResponse optimizeCVText(String resumeText, String jobDescription, String userEmail) {
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> InterviewException.notFound("User not found"));
+
+        subscriptionService.validateUsageLimit(user, "CV_ANALYSIS");
+
+        String promptText = """
+            Act as a professional executive resume writer and career coach.
+            Your task is to rewrite and optimize the following Resume text to match the provided Job Description.
+            
+            Follow these instructions closely:
+            1. Analyze the Job Description to identify core keywords, required skills, and business outcomes.
+            2. Naturally integrate missing keywords into the rewritten resume.
+            3. Structure the experience descriptions using the STAR format (Situation, Task, Action, Result) with clear, quantified metrics (e.g., "reduced latency by 45%", "improved LCP by 64%").
+            4. Rewrite the Professional Summary and Skill sections to align with the role.
+            5. Return the fully rewritten, optimized resume in clean Markdown format.
+            
+            Return a STRICT JSON object. Do not include markdown code blocks (like ```json).
+            
+            Structure:
+            {
+              "optimizedResumeMarkdown": "string (The fully rewritten and optimized resume in clean markdown format)",
+              "changelog": ["string (Detailed list of changes made, e.g. 'Added Kubernetes keyword', 'Quantified cloud cost reduction')"]
+            }
+            
+            RESUME:
+            ---
+            %s
+            ---
+            JOB DESCRIPTION:
+            ---
+            %s
+            ---
+            """;
+
+        String finalMessage = String.format(promptText, resumeText, jobDescription);
+
+        try {
+            String aiResponse = chatModel.call(new Prompt(new UserMessage(finalMessage)))
+                    .getResult()
+                    .getOutput()
+                    .getText();
+
+            String cleanedJson = aiResponse.replaceAll("(?s)```json\\s*|\\s*```", "").trim();
+            
+            return objectMapper.readValue(cleanedJson, CvOptimizationResponse.class);
+        } catch (Exception e) {
+            log.error("Gemini AI CV Optimization failed", e);
+            throw InterviewException.internalError("The AI optimization service is temporarily unavailable.");
         }
     }
 }
