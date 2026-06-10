@@ -4,35 +4,16 @@ services:
     runtime: docker
     envVars:
       - key: SPRING_DATASOURCE_URL
-        # We manually prefix the host, port, and name with 'jdbc:postgresql://'
-        value: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
-      - key: DB_HOST
-        fromDatabase:
-          name: ai-interview-db
-          property: host
-      - key: DB_PORT
-        fromDatabase:
-          name: ai-interview-db
-          property: port
-      - key: DB_NAME
-        fromDatabase:
-          name: ai-interview-db
-          property: database
+        sync: false
       - key: SPRING_DATASOURCE_USERNAME
-        fromDatabase:
-          name: ai-interview-db
-          property: user
+        sync: false
       - key: SPRING_DATASOURCE_PASSWORD
-        fromDatabase:
-          name: ai-interview-db
-          property: password
+        sync: false
       - key: GEMINI_API_KEY
         sync: false
       - key: PAYSTACK_SECRET_KEY
         sync: false
-
-databases:
-  - name: ai-interview-db
-    plan: free
-    databaseName: mockinterview_db
-    user: admin
+      - key: JWT_SECRET
+        sync: false
+      - key: MAIL_PASSWORD
+        sync: false
